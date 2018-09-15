@@ -81,7 +81,6 @@ dependencies {
     // Specify your CorDapp's dependencies below, including dependent CorDapps.
     // We've defined Cash as a dependent CorDapp as an example.
     cordapp project(":cordapp")
-    cordapp project(":cordapp-contracts-states")
     cordapp "$corda_release_group:corda-finance:$corda_release_version"
 }
 
@@ -99,51 +98,54 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
     }
 }
 
+def rpcUsersList = [
+        ['username' : "user1",
+         'password' : "password",
+         'permissions' : ["ALL"]]
+]
+
 task deployNodes(type: net.corda.plugins.Cordform, dependsOn: ['jar']) {
     directory "./build/nodes"
     node {
         name "O=Notary,L=London,C=GB"
-        notary = [validating : false]
+        notary = [validating : true]
         p2pPort 10002
-        rpcSettings {
-            address("localhost:10003")
-            adminAddress("localhost:10043")
-        }
         cordapps = [
-                "$project.group:cordapp-contracts-states:$project.version",
                 "$project.group:cordapp:$project.version",
                 "$corda_release_group:corda-finance:$corda_release_version"
         ]
     }
     node {
-        name "O=PartyA,L=London,C=GB"
+        name "O=CentralBank,L=Bangkok,C=TH"
         p2pPort 10005
-        rpcSettings {
-            address("localhost:10006")
-            adminAddress("localhost:10046")
-        }
         webPort 10007
+        rpcSettings {
+            useSsl false
+            address "localhost:10006"
+            adminAddress "localhost:10016"
+            standAloneBroker false
+        }
         cordapps = [
-                "$project.group:cordapp-contracts-states:$project.version",
                 "$project.group:cordapp:$project.version",
                 "$corda_release_group:corda-finance:$corda_release_version"
         ]
-        rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
+        rpcUsers = rpcUsersList
     }
     node {
-        name "O=PartyB,L=New York,C=US"
+        name "O=BankA,L=Bangkok,C=TH"
         p2pPort 10008
-        rpcSettings {
-            address("localhost:10009")
-            adminAddress("localhost:10049")
-        }
         webPort 10010
+        rpcSettings {
+            useSsl false
+            address "localhost:10009"
+            adminAddress "localhost:10019"
+            standAloneBroker false
+        }
         cordapps = [
-                "$project.group:cordapp-contracts-states:$project.version",
                 "$project.group:cordapp:$project.version",
                 "$corda_release_group:corda-finance:$corda_release_version"
         ]
-        rpcUsers = [[ user: "user1", "password": "test", "permissions": ["ALL"]]]
+        rpcUsers = rpcUsersList
     }
 }
 
