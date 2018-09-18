@@ -14,34 +14,32 @@ import java.util.concurrent.Future
 import kotlin.test.assertEquals
 
 class DriverBasedTest {
-    private val bankA = TestIdentity(CordaX500Name("BankA", "", "GB"))
-    private val bankB = TestIdentity(CordaX500Name("BankB", "", "US"))
+    private val centralBank = TestIdentity(CordaX500Name("CentralBank", "Bangkok", "TH"))
+    private val bankA = TestIdentity(CordaX500Name("BankA", "Bangkok", "TH"))
 
     @Test
     fun `node test`() = withDriver {
         // Start a pair of nodes and wait for them both to be ready.
-        val (partyAHandle, partyBHandle) = startNodes(bankA, bankB)
+        val (centralBankHandle, bankAHandle) = startNodes(centralBank, bankA)
 
         // From each node, make an RPC call to retrieve another node's name from the network map, to verify that the
         // nodes have started and can communicate.
 
         // This is a very basic test: in practice tests would be starting flows, and verifying the states in the vault
         // and other important metrics to ensure that your CorDapp is working as intended.
-        assertEquals(bankB.name, partyAHandle.resolveName(bankB.name))
-        assertEquals(bankA.name, partyBHandle.resolveName(bankA.name))
+        assertEquals(centralBank.name, centralBankHandle.resolveName(centralBank.name))
+        assertEquals(bankA.name, bankAHandle.resolveName(bankA.name))
     }
 
     @Test
     fun `node webserver test`() = withDriver {
         // This test starts each node's webserver and makes an HTTP call to retrieve the body of a GET endpoint on
         // the node's webserver, to verify that the nodes' webservers have started and have loaded the API.
-        startWebServers(bankA, bankB).forEach {
+        startWebServers(centralBank, bankA).forEach {
             val request = Request.Builder()
-                .url("http://${it.listenAddress}/api/template/templateGetEndpoint")
+                .url("http://${it.listenAddress}/api/bank/issue")
                 .build()
             val response = OkHttpClient().newCall(request).execute()
-
-            assertEquals("Template GET endpoint.", response.body().string())
         }
     }
 
