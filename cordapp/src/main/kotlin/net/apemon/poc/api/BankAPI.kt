@@ -1,6 +1,8 @@
 package net.apemon.poc.api
 
 import kotlinx.html.attributesMapOf
+import net.apemon.poc.flow.AccountTransferFlow
+import net.apemon.poc.state.AccountTransferState
 import net.corda.core.contracts.Amount
 import net.corda.core.contracts.ContractState
 import net.corda.core.contracts.StateAndRef
@@ -43,6 +45,14 @@ class BankAPI(val rpcOps: CordaRPCOps) {
     fun getCashBalances() = rpcOps.getCashBalances()
 
     @GET
+    @Path("accountTransfer")
+    @Produces(MediaType.APPLICATION_JSON)
+    fun getAccountTransfer(): List<StateAndRef<ContractState>> {
+        // Filter by state type: Cash.
+        return rpcOps.vaultQueryBy<AccountTransferState>().states
+    }
+
+    @GET
     @Path("cash")
     @Produces(MediaType.APPLICATION_JSON)
     fun getCash(): List<StateAndRef<ContractState>> {
@@ -52,7 +62,6 @@ class BankAPI(val rpcOps: CordaRPCOps) {
 
     @POST
     @Path("issue")
-    @Produces(MediaType.APPLICATION_JSON)
     fun issue(request: RequestParam): Response {
         val issueAmount = Amount(request.amount.toLong() * 100, Currency.getInstance(request.currency))
 
@@ -74,7 +83,6 @@ class BankAPI(val rpcOps: CordaRPCOps) {
 
     @POST
     @Path("transfer")
-    @Produces(MediaType.APPLICATION_JSON)
     fun transfer(request: RequestParam): Response {
         val transferAmount = Amount(request.amount.toLong() * 100, Currency.getInstance(request.currency))
 
@@ -97,8 +105,44 @@ class BankAPI(val rpcOps: CordaRPCOps) {
         }
     }
 
+    @POST
+    @Path("accountTransfer")
+    fun accountTransfer(request: AccountTransferRequest): Response {
+        val transferAmount = Amount(request.amount.toLong() * 100, Currency.getInstance(request.currency))
+
+        val targetParty = rpcOps.partiesFromName(request.creditor, true).first()
+        val state = AccountTransferState(
+                debtor = rpcOps.nodeInfo().legalIdentities.first(),
+                debtorAcct = request.debtorAcct,
+                creditor = targetParty,
+                creditorAcct = request.creditorAcct,
+                amount = transferAmount
+        )
+        try {
+            val trx = rpcOps.startFlow(::AccountTransferFlow, state).returnValue.get()
+            return Response
+                    .status(Response.Status.OK)
+                    .entity((trx.tx.outputs.single().data as AccountTransferState).toString())
+                    .build()
+        } catch(e: Exception){
+            return Response
+                    .status(Response.Status.BAD_REQUEST)
+                    .entity(e.printStackTrace())
+                    .build()
+        }
+    }
+
     data class RequestParam(
             val to: String,
+            val amount: Int,
+            val currency: String
+    )
+
+    data class AccountTransferRequest(
+            val debtor: String,
+            val debtorAcct: String,
+            val creditor: String,
+            val creditorAcct: String,
             val amount: Int,
             val currency: String
     )

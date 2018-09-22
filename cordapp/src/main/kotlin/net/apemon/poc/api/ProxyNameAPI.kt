@@ -53,7 +53,7 @@ class ProxyNameAPI(val rpcOps: CordaRPCOps) {
     @Produces(MediaType.APPLICATION_JSON)
     fun getName(@PathParam(value = "namespace") namespace: String,
                 @PathParam(value = "identifier") identifier: String): Response{
-        val generalCriteria = QueryCriteria.VaultQueryCriteria(Vault.StateStatus.ALL)
+        val generalCriteria = QueryCriteria.VaultQueryCriteria(Vault.StateStatus.UNCONSUMED)
         val results = builder {
             var namespaceType = ProxyNameSchemaV1.PersistentProxyName::namespace.equal(namespace)
             val customNamespaceCriteria = QueryCriteria.VaultCustomQueryCriteria(namespaceType)
@@ -63,8 +63,6 @@ class ProxyNameAPI(val rpcOps: CordaRPCOps) {
             val results = rpcOps.vaultQueryBy<ProxyNameState>(criteria).states
             return Response.ok(results).build()
         }
-        val states = rpcOps.vaultQueryBy<ProxyNameState>()
-        return Response.status(Response.Status.NOT_IMPLEMENTED).build()
     }
 
     data class IssueRequest(
